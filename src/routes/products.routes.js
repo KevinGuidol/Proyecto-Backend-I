@@ -3,7 +3,6 @@ import fs from "fs";
 import { fileURLToPath } from "url";
 import path from "path";
 import { v4 as uuid } from "uuid";
-import { log } from "console";
 
 export const productsRoutes = Router();
 
@@ -12,18 +11,26 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Ruta relativa al archivo JSON
-const filePath = path.resolve(__dirname, "../db/products.json");
+const filePathProducts = path.resolve(__dirname, "../db/products.json");
+
+// Definimos la función saveOnFile
+function saveOnFile(products) {
+  try {
+    fs.writeFileSync(filePathProducts, JSON.stringify(products, null, 2));
+  } catch (error) {
+    throw new Error('Error al guardar el archivo');
+  }
+}
 
 //
 // GET /api/products
 //
 productsRoutes.get("/", async (req, res) => {
-
-  if (fs.existsSync(filePath)) {
+  if (fs.existsSync(filePathProducts)) {
     try {
-      // Si existe lo leemos y lo parseamos
-      const products = JSON.parse(fs.readFileSync(filePath, "utf-8"));
-      //Retornamos los productos
+      // Si existe, leemos y parseamos el archivo
+      const products = JSON.parse(fs.readFileSync(filePathProducts, "utf-8"));
+      // Retornamos los productos
       res.status(200).json(products);
     } catch (error) {
       // Si hubo un error al leer el archivo, lo seteamos como vacío
@@ -38,16 +45,14 @@ productsRoutes.get("/", async (req, res) => {
 });
 
 //
-//GET /api/products/:pid
+// GET /api/products/:pid
 //
-
 productsRoutes.get("/:pid", async (req, res) => {
   const { pid } = req.params;
   try {
     // Obtenemos el producto con el id proporcionado
-    const product = JSON.parse(fs.readFileSync(filePath, "utf-8")).find(
-      (product) => product.id === pid
-    );
+    const products = JSON.parse(fs.readFileSync(filePathProducts, "utf-8"));
+    const product = products.find((product) => product.id === pid);
     // Si el producto no existe, lanzamos un error
     if (!product) {
       res.status(404).json({ message: "Producto no encontrado" });
@@ -61,11 +66,9 @@ productsRoutes.get("/:pid", async (req, res) => {
   }
 });
 
-
 //
 // POST /api/products
 //
-
 productsRoutes.post("/", async (req, res) => {
   try {
     // Obtenemos los datos del producto enviados
@@ -85,11 +88,11 @@ productsRoutes.post("/", async (req, res) => {
       res.status(400).json({ message: "Faltan campos obligatorios" });
       return;
     }
-    const products = []
-    if (fs.existsSync(filePath)) {
+    let products = [];
+    if (fs.existsSync(filePathProducts)) {
       try {
-        // Si existe lo leemos y lo parseamos redeclarando la constante
-        products = JSON.parse(fs.readFileSync(filePath, "utf-8"));
+        // Si existe, leemos y parseamos el archivo
+        products = JSON.parse(fs.readFileSync(filePathProducts, "utf-8"));
       } catch (error) {
         console.error(error);
       }
@@ -104,14 +107,11 @@ productsRoutes.post("/", async (req, res) => {
 
     // Validamos que no haya un producto con el mismo id (poco probable, pero prevenido)
     if (products.find(product => product.id === id)) {
-      res.status(400).json({ message: "Ya existe un producto con ese id" }); res
+      res.status(400).json({ message: "Ya existe un producto con ese id" });
       return;
     }
 
     // Si no existe, creamos un objeto con las propiedades
-    /*     if (stock === 0) {
-          status = false;
-        } */
     const product = {
       id,
       title,
@@ -127,8 +127,8 @@ productsRoutes.post("/", async (req, res) => {
     // Lo agregamos al array de productos
     products.push(product);
 
-    // Guardamos el array actualizado en el archivo
-    fs.writeFileSync(filePath, JSON.stringify(products, null, 2));
+    // Guardamos el array actualizado en el archivo usando saveOnFile
+    saveOnFile(products);
 
     // Retornamos el producto creado
     res.status(201).json({
@@ -144,10 +144,13 @@ productsRoutes.post("/", async (req, res) => {
 //
 // PUT /api/products/:pid
 //
-
 productsRoutes.put("/:pid", async (req, res) => {
   const { pid } = req.params;
+
   try {
+    // Leemos el archivo y parseamos los productos
+    const products = JSON.parse(fs.readFileSync(filePathProducts, "utf-8"));
+
     // Obtenemos los datos del producto enviados
     const {
       title,
@@ -161,20 +164,15 @@ productsRoutes.put("/:pid", async (req, res) => {
     } = req.body;
 
     // Obtenemos el producto con el id proporcionado
-    const product = JSON.parse(fs.readFileSync(filePath, "utf-8")).find(
-      (product) => product.id === pid
-    );
+    const product = products.find((product) => product.id === pid);
 
     // Si el producto no existe, lanzamos un error
     if (!product) {
-      res.status(404).json({ message: "Producto no encontrado" });
-      return;
+      return res.status(404).json({ message: "Producto no encontrado" });
     } else {
       // Validamos que el producto no exista por code
-      const products = JSON.parse(fs.readFileSync(filePath, "utf-8"));
-      if (products.find((prod) => prod.code === code && !product.code)) {
-        res.status(400).json({ message: "Ya existe un producto con este código" });
-        return;
+      if (products.find((prod) => prod.code === code && prod.id !== pid)) {
+        return res.status(400).json({ message: "Ya existe un producto con este código" });
       }
     }
 
@@ -188,13 +186,8 @@ productsRoutes.put("/:pid", async (req, res) => {
     product.status = status ?? product.status;
     product.stock = stock ?? product.stock;
 
-    // Guardamos el array actualizado en el archivo
-    try {
-      productsRoutes.saveOnFile();
-    } catch (error) {
-      res.status(500).json({ message: "Error al guardar el producto" });
-      return;
-    }
+    // Guardamos el array actualizado en el archivo usando saveOnFile
+    saveOnFile(products);
 
     // Retornamos el producto actualizado
     res.status(200).json({
@@ -209,15 +202,14 @@ productsRoutes.put("/:pid", async (req, res) => {
 //
 // DELETE /api/products/:pid
 //
-
 productsRoutes.delete("/:pid", async (req, res) => {
   const { pid } = req.params;
   let products = [];
 
-  if (fs.existsSync(filePath)) {
+  if (fs.existsSync(filePathProducts)) {
     try {
       // Si existe, leemos y parseamos el archivo
-      products = JSON.parse(fs.readFileSync(filePath, "utf-8"));
+      products = JSON.parse(fs.readFileSync(filePathProducts, "utf-8"));
     } catch (error) {
       return res.status(400).json({ message: "Error al leer el archivo" });
     }
@@ -238,12 +230,8 @@ productsRoutes.delete("/:pid", async (req, res) => {
     const index = products.findIndex((product) => product.id === pid);
     products.splice(index, 1);
 
-    // Guardamos el array actualizado en el archivo
-    try {
-      fs.writeFileSync(filePath, JSON.stringify(products));
-    } catch (error) {
-      return res.status(500).json({ message: "Error al guardar el archivo" });
-    }
+    // Guardamos el array actualizado en el archivo usando saveOnFile
+    saveOnFile(products);
 
     // Retornamos el producto eliminado
     res.status(200).json({
@@ -254,17 +242,3 @@ productsRoutes.delete("/:pid", async (req, res) => {
     res.status(500).json({ message: "Error al eliminar el producto" });
   }
 });
-
-
-
-//
-// Guardar archivo
-// 
-
-productsRoutes.saveOnFile = async () => {
-  try {
-    fs.writeFileSync(filePath, JSON.stringify(JSON.parse(fs.readFileSync(filePath, "utf-8")), null, 2));
-  } catch (error) {
-    console.error("Error al guardar el archivo:", error);
-  }
-};

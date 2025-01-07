@@ -1,0 +1,23 @@
+[
+  {
+    "cid": 1,
+    "products": []
+  },
+  {
+    "cid": 2,
+    "products": [
+      {
+        "pid": "a8868071-d8e1-4980-9cfe-6feb6c51d4f8",
+        "quantity": 1
+      },
+      {
+        "pid": "0f6f97eb-3787-464c-a241-81ffd693de26",
+        "quantity": 2
+      }
+    ]
+  },
+  {
+    "cid": 3,
+    "products": []
+  }
+]
