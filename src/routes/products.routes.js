@@ -21,11 +21,59 @@ function saveOnFile(products) {
     throw new Error('Error al guardar el archivo');
   }
 }
+//
+//GET "/"
+//
+
+productsRoutes.get('/', (req, res) => {
+  if (fs.existsSync(filePathProducts)) {
+    try {
+      // Si existe, leemos y parseamos el archivo
+      const products = JSON.parse(fs.readFileSync(filePathProducts, "utf-8"));
+      // Renderizamos la vista home y pasamos los productos
+      res.render("home", { products });
+    } catch (error) {
+      // Si hubo un error al leer el archivo, renderizamos con productos vacíos
+      const products = [];
+      res.render("home", { products });
+    }
+  } else {
+    // Si no existe el archivo, renderizamos con productos vacíos
+    const products = [];
+    res.render("home", { products });
+  }
+});
+
+
+//
+// RealTimeProducts
+//
+
+productsRoutes.get('/realtimeproducts', (req, res) => {
+  if (fs.existsSync(filePathProducts)) {
+    try {
+      // Si existe, leemos y parseamos el archivo
+      const products = JSON.parse(fs.readFileSync(filePathProducts, "utf-8"));
+      // Renderizamos la vista realTimeProducts y pasamos los productos
+      res.render("realTimeProducts", { products });
+    } catch (error) {
+      // Si hubo un error al leer el archivo, renderizamos con productos vacíos
+      const products = [];
+      res.render("realTimeProducts", { products });
+    }
+  } else {
+    // Si no existe el archivo, renderizamos con productos vacíos
+    const products = [];
+    res.render("realTimeProducts", { products });
+  }
+});
+
+
 
 //
 // GET /api/products
 //
-productsRoutes.get("/", async (req, res) => {
+productsRoutes.get("/products", async (req, res) => {
   if (fs.existsSync(filePathProducts)) {
     try {
       // Si existe, leemos y parseamos el archivo

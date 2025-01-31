@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Productos en tiempo real</title>
+</head>
+
+<body>
+  <h1>Productos en tiempo real</h1>
+  <ul id="productsContainer">
+    {{#each products}}
+    <li>
+      <p>{{this.title}} - ${{this.price}} - {{this.category}} - {{this.stock}}</p>
+      <button onclick="deleteProduct('{{this.id}}')">Eliminar</button>
+    </li>
+    {{/each}}
+  </ul>
+
+  <h2>Agregar nuevo producto</h2>
+  <form id="productForm">
+    <input type="text" id="title" placeholder="Título" required>
+    <input type="number" id="price" placeholder="Precio" required>
+    <input type="text" id="category" placeholder="Categoría" required>
+    <input type="number" id="stock" placeholder="Stock" required>
+    <button type="submit">Agregar producto</button>
+  </form>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+
+    // Escuchar actualizaciones de productos
+    socket.on("updateProducts", (products) => {
+      const productsContainer = document.getElementById("productsContainer");
+      productsContainer.innerHTML = "";
+      products.forEach((product) => {
+        const li = document.createElement("li");
+        li.innerHTML = `<p>${product.title} - $${product.price} - ${product.category} - ${product.stock}</p>
+                                <button onclick="deleteProduct('${product.id}')">Eliminar</button>`;
+        productsContainer.appendChild(li);
+      });
+    });
+
+    // Manejar el envío del formulario
+    document.getElementById("productForm").addEventListener("submit", (e) => {
+      e.preventDefault();
+      const title = document.getElementById("title").value;
+      const price = document.getElementById("price").value;
+      const category = document.getElementById("category").value;
+      const stock = document.getElementById("stock").value;
+      socket.emit("newProduct", { title, price, category, stock });
+    });
+
+    // Manejar la eliminación de productos
+    function deleteProduct(id) {
+      socket.emit("deleteProduct", id);
+    }
+  </script>
+</body>
+
+</html>
