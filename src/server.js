@@ -1,31 +1,16 @@
 import express from 'express';
-import __dirname from './utils.js';
-import handlebars from 'express-handlebars';
 import { productsRoutes } from './routes/products.routes.js';
 import { cartsRoutes } from './routes/cart.routes.js';
+import handlebars from 'express-handlebars';
+import __dirname from './utils.js';
 import path from 'path';
+import {viewRouter} from './routes/views.routes.js';
 import { Server } from 'socket.io';
-import fs from 'fs';
-import { v4 as uuid } from 'uuid';
-import { fileURLToPath } from "url";
+import mongoose from 'mongoose';
+import { productModel } from './models/products.model.js';
 
 const app = express();
-
 const PORT = 8080;
-
-// Definimos el path al archivo de productos
-const __filename = fileURLToPath(import.meta.url);
-const __dirnamePath = path.dirname(__filename);
-const filePathProducts = path.resolve(__dirnamePath, "./db/products.json");
-
-// Definimos la función saveOnFile
-function saveOnFile(products) {
-  try {
-    fs.writeFileSync(filePathProducts, JSON.stringify(products, null, 2));
-  } catch (error) {
-    throw new Error('Error al guardar el archivo');
-  }
-}
 
 // Express config
 app.use(express.json());
@@ -44,8 +29,18 @@ app.engine(
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'hbs');
 
+//Mongoose connection
+
+mongoose.connect('mongodb+srv://kevinguidolinkg:Kevin1234@practicaintegradora.j6qtn.mongodb.net/?retryWrites=true&w=majority&appName=practicaIntegradora')
+  .then(() => {
+    console.log('Conectado a la base de datos')
+  })
+  .catch((err) => {
+    console.log('Error al conectar a la base de datos: ', err)
+  })
+
 // Routes
-app.use('/', productsRoutes);
+app.use('/api/products', productsRoutes);
 
 app.use('/carts', cartsRoutes);
 
@@ -58,15 +53,13 @@ const httpServer = app.listen(PORT, () => {
 const io = new Server(httpServer);
 
 // Server de WebSocket
-io.on("connection", (socket) => {
+io.on("connection", async (socket) => {
   console.log("Nuevo cliente conectado" + socket.id);
 
-  socket.on("newProduct", (productData) => {
+  socket.on("newProduct", async (productData) => {
     try {
-      // Leer productos desde el archivo
-      const products = JSON.parse(fs.readFileSync(filePathProducts, "utf-8")) || [];
+      const products = await productModel.find({});
       const newProduct = {
-        id: uuid(),
         title: productData.title,
         price: productData.price,
         category: productData.category,
